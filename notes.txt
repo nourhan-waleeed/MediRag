@@ -1,0 +1,3 @@
+venv is edurag2
+required pip 24 for textract
+pywin32 version is 310

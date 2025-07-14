@@ -47,23 +47,36 @@ def extract_text_from_doc(file_path: str) -> str:
         print(f"Error extracting text from {file_path}: {e}")
         return ""
 
+
 def process_docs_folder(folder_path: str) -> List[Document]:
     documents = []
-    doc_files = glob.glob(os.path.join(folder_path, "*.doc"))
-    docx_files = glob.glob(os.path.join(folder_path, "*.docx"))
+    doc_files = []
+    docx_files = []
+
+    for root, dirs, files in os.walk(folder_path):
+        for file in files:
+            if file.lower().endswith('.doc'):
+                doc_files.append(os.path.join(root, file))
+            elif file.lower().endswith('.docx'):
+                docx_files.append(os.path.join(root, file))
+
+    print(f"Found {len(doc_files)} .doc files and {len(docx_files)} .docx files across all folders.")
+
     all_files = doc_files + docx_files
-
-    print(f"Found {len(doc_files)} .doc files and {len(docx_files)} .docx files.")
-
     for doc_file in all_files:
+        print(f"Processing {doc_file}...")
         text = extract_text_from_doc(doc_file)
         if text:
+            relative_path = os.path.relpath(doc_file, folder_path)
+            folder = os.path.dirname(relative_path)
+
             doc = Document(
                 page_content=text,
                 metadata={
                     "source": doc_file,
                     "file_name": os.path.basename(doc_file),
-                    "extension": os.path.splitext(doc_file)[1]
+                    "extension": os.path.splitext(doc_file)[1],
+                    "folder": folder if folder else "root"
                 }
             )
             documents.append(doc)
@@ -71,11 +84,10 @@ def process_docs_folder(folder_path: str) -> List[Document]:
     return documents
 
 
-
-
 if __name__ == "__main__":
-    docs_folder = "datatest"
-    db_directory = "databasetest"
+    docs_folder = r"C:\Users\nourh\OneDrive\Desktop\edurag\Report\DOC\2024\October 2024"
+    db_directory = r"C:\Users\nourh\OneDrive\Desktop\edurag\MediRag\db"
+
 
     documents = process_docs_folder(docs_folder)
     print(f"Extracted text from {len(documents)} documents.")
@@ -85,24 +97,29 @@ if __name__ == "__main__":
         model_name="sentence-transformers/all-MiniLM-L6-v2"
     )
 
-    print("Creating Chroma vector store...")
-    vectorstore = Chroma.from_documents(
-        documents=documents,
-        embedding=embeddings,
+    # print("Creating Chroma vector store...")
+    # vectorstore = Chroma.from_documents(
+    #     documents=documents,
+    #     embedding=embeddings,
+    #     persist_directory=db_directory,
+    #     collection_name="collection"
+    # )
+    #
+    # vectorstore.persist()
+    vectorstore = Chroma(
         persist_directory=db_directory,
+        embedding_function=embeddings,
         collection_name="collection"
-
     )
-
+    vectorstore.add_documents(documents)
     vectorstore.persist()
-
-    print("Successfully created and persisted Chroma vector database!")
-
-    print("\nExample retrieval:")
-    query = "Your example query here"
-    docs = vectorstore.similarity_search(query, k=3)
-    print(f"Found {len(docs)} relevant documents for query: '{query}'")
-    for i, doc in enumerate(docs):
-        print(f"\nResult {i + 1}:")
-        print(f"Source: {doc.metadata['file_name']} ({doc.metadata['extension']})")
-        print(f"Content preview: {doc.page_content[:200]}...")
+    print("Successfully uploaded and persisted Chroma vector database!")
+    #
+    # print("\nExample retrieval:")
+    # query = "Your example query here"
+    # docs = vectorstore.similarity_search(query, k=3)
+    # print(f"Found {len(docs)} relevant documents for query: '{query}'")
+    # for i, doc in enumerate(docs):
+    #     print(f"\nResult {i + 1}:")
+    #     print(f"Source: {doc.metadata['file_name']} ({doc.metadata['extension']})")
+    #     print(f"Content preview: {doc.page_content[:200]}...")

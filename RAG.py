@@ -15,7 +15,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-genai.configure(api_key="AIzaSyAilOaRoHx5sO7seufB2SMuX7tusoAbh3I")
+genai.configure(api_key="AIzaSyB0ONNZHqS0-ZA0Ms59X1iQU3Nog4XsFbU")
 
 
 class QuestionRequest(BaseModel):
@@ -31,14 +31,14 @@ embeddings = HuggingFaceEmbeddings(
     model_name="sentence-transformers/all-MiniLM-L6-v2"
 )
 
-persist_directory = r"C:\Users\nourh\OneDrive\Desktop\edurag\MediRag\databasetest"
+persist_directory = r"C:\Users\nourh\OneDrive\Desktop\apps\MediRag\db"
 vectorstore = Chroma(
     persist_directory=persist_directory,
     embedding_function=embeddings,
     collection_name ="collection"
 )
 base_retriever = vectorstore.as_retriever(search_kwargs={"k": 3})
-
+print('base retriever',base_retriever)
 async def make_rag_prompt(question: str, context: str)->str:
     prompt = (
         f"You are a medical assistant specialized in radiology report generation. "
@@ -73,6 +73,20 @@ async def generate_response(question: str,direct=False) -> str:
     return model.generate_content(question).text
 
 
+collection = vectorstore.get()
+
+print("=" * 50)
+print("BASIC VECTORSTORE INSPECTION")
+print("=" * 50)
+
+print(f"Total documents: {len(collection['ids'])}")
+print(f"Collection keys: {collection.keys()}")
+
+if collection['ids']:
+    print(f"First 5 document IDs: {collection['ids'][:5]}")
+    print(f"Sample metadata: {collection['metadatas'][:2] if collection['metadatas'] else 'None'}")
+    print(f"Sample documents: {collection['documents'][:2] if collection['documents'] else 'None'}")
+
 
 async def get_answer(question: str) -> AnswerResponse:
     print('into get answer')
@@ -83,9 +97,13 @@ async def get_answer(question: str) -> AnswerResponse:
     relevant_docs = vectorstore.similarity_search_with_score(
         query=question, k=3,
     )
-    # relevant_docs = await retriever.ainvoke(question)
-    print('relevant docssssssssssssssss')
-    print(relevant_docs)
+    if not relevant_docs:
+        print('No relevant documents found, using direct model')
+        direct_answer = await generate_response(question, direct=True)
+        return AnswerResponse(
+            answer=direct_answer,
+            source="Direct Model - No Relevant Context"
+        )
     rag_prompt =  await make_rag_prompt(question, combined_context)
     rag_answer = await generate_response(rag_prompt)
 
@@ -125,4 +143,4 @@ async def ask_question(request: QuestionRequest):
 
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="11.11.11.156", port=8888)
+    uvicorn.run(app, host="192.168.10.185", port=8888)

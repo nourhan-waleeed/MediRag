@@ -3,7 +3,7 @@ import time
 
 
 def test_rag_api():
-    base_url = "http://192.168.1.32:8888"
+    base_url = "http://11.11.11.156:8888"
 
     try:
         health_response = requests.get(f"{base_url}/")
@@ -13,8 +13,7 @@ def test_rag_api():
         return
 
 
-    test_questions = [f"""i need you to help me get the recommendation for this case findings the petrous , cavernous portions of right ICA.
-•	Atherosclerotic changes of both common , external and internal carotid arteries are seen  manifested as intimal thickening with non-calcified atheromatous plaque 
+    test_questions = [f""" give me the structure report of a broken ankle mri
 """
 
     ]
